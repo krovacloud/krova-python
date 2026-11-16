@@ -64,6 +64,42 @@ with krova.cubes.connect(cube.id, private_key=open("id_ed25519").read()) as shel
 
 The Cube's host keys come from the API and are checked on every connection. If the server presents any other key, or the API has no keys for the Cube yet (a Cube that is still booting), `HostKeyMismatchError` is raised and nothing is sent. You can pass `host_keys=[...]` to use keys you already hold; there is no way to skip the check.
 
+## Agent framework tools
+
+Give an agent three tools bound to one open `CubeShell`: `krova_run(command, cwd=None, timeout=None)`, `krova_read_file(path)` and `krova_write_file(path, content)`. Commands run in the Cube, a CPU-only Linux VM, over SSH, as the user you connected with, so the agent can do anything that user can. Use a Cube of its own. Each tool returns text; `krova_run` returns the exit code, stdout and stderr, and an error comes back as text starting with `Error:` so the model can react. Stdout, stderr and a file read are each cut at 32 KB, and the result says when they were; pass `max_output_bytes=` to `krova_tools` to change it. You close the shell.
+
+Each framework is an optional extra. `krova[crewai]` and `krova[openai-agents]` pin different `openai` majors, so install only one of those two in an environment.
+
+LangChain (`pip install 'krova[langchain]'`):
+
+```python
+from krova.integrations.langchain import krova_tools
+
+with krova.cubes.connect(cube.id, private_key=key) as shell:
+    tools = krova_tools(shell)  # list of BaseTool, for example model.bind_tools(tools)
+```
+
+CrewAI (`pip install 'krova[crewai]'`):
+
+```python
+from crewai import Agent
+from krova.integrations.crewai import krova_tools
+
+with krova.cubes.connect(cube.id, private_key=key) as shell:
+    coder = Agent(role="Engineer", goal="Fix the build", backstory="...", tools=krova_tools(shell))
+```
+
+OpenAI Agents SDK (`pip install 'krova[openai-agents]'`):
+
+```python
+from agents import Agent, Runner
+from krova.integrations.openai_agents import krova_tools
+
+with krova.cubes.connect(cube.id, private_key=key) as shell:
+    agent = Agent(name="Engineer", instructions="Fix the build.", tools=krova_tools(shell))
+    result = Runner.run_sync(agent, "Run the tests in /srv/app")
+```
+
 ## Errors
 
 A failed call raises `krova.KrovaError` with `status`, `code`, `message` and `request_id`. Quote the request id when you contact support. Deleting a Cube with termination protection raises it with status 409 and code `termination_protected`. `wait_until_running` raises `WaitTimeoutError` on timeout and `CubeFailedError` if the Cube ends up in `error`, `deleted`, `stopped` or `stopping`; both are `KrovaError` subclasses, as are `HostKeyMismatchError`, `PrivateKeyError` and `RunTimeoutError`.
@@ -75,6 +111,8 @@ uv sync
 uv run ruff check .
 uv run pytest
 ```
+
+The framework adapter tests skip when their framework is not installed. To run one, sync with its extra, for example `uv sync --extra langchain && uv run pytest tests/test_integration_langchain.py`.
 
 The HTTP layer in `krova/_generated/` is generated from `openapi.json` with a pinned `openapi-python-client`. Do not edit it by hand. To refresh it:
 
