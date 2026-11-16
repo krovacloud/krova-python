@@ -1,14 +1,22 @@
 # krova-python
 
-Python SDK for the Krova Cloud API. Early version: create, get, list and delete Cubes, power one off, read its SSH details, wait until it is running, run commands and move files. Not published to PyPI yet.
+Python SDK for the Krova Cloud API. Early version: create, get, list and delete Cubes, power one off, read its SSH details, wait until it is running, run commands and move files. Releases ship from GitHub only.
 
 ## Install
 
-Python 3.11 or newer.
+Python 3.11 or newer. Replace `v0.1.0` with the release tag you want.
 
 ```bash
-pip install "git+https://github.com/krovacloud/krova-python.git"
+pip install "krova @ git+https://github.com/krovacloud/krova-python@v0.1.0"
 ```
+
+Or install the wheel attached to the release:
+
+```bash
+pip install "https://github.com/krovacloud/krova-python/releases/download/v0.1.0/krova-0.1.0-py3-none-any.whl"
+```
+
+Every release lists the SHA256 of its wheel and sdist in `SHA256SUMS`. The repo is private for now, so both install forms work once it is public.
 
 ## Quickstart
 
@@ -70,7 +78,7 @@ Give an agent three tools bound to one open `CubeShell`: `krova_run(command, cwd
 
 Each framework is an optional extra. `krova[crewai]` and `krova[openai-agents]` pin different `openai` majors, so install only one of those two in an environment.
 
-LangChain (`pip install 'krova[langchain]'`):
+LangChain (`pip install "krova[langchain] @ git+https://github.com/krovacloud/krova-python@v0.1.0"`):
 
 ```python
 from krova.integrations.langchain import krova_tools
@@ -79,7 +87,7 @@ with krova.cubes.connect(cube.id, private_key=key) as shell:
     tools = krova_tools(shell)  # list of BaseTool, for example model.bind_tools(tools)
 ```
 
-CrewAI (`pip install 'krova[crewai]'`):
+CrewAI (`pip install "krova[crewai] @ git+https://github.com/krovacloud/krova-python@v0.1.0"`):
 
 ```python
 from crewai import Agent
@@ -89,7 +97,7 @@ with krova.cubes.connect(cube.id, private_key=key) as shell:
     coder = Agent(role="Engineer", goal="Fix the build", backstory="...", tools=krova_tools(shell))
 ```
 
-OpenAI Agents SDK (`pip install 'krova[openai-agents]'`):
+OpenAI Agents SDK (`pip install "krova[openai-agents] @ git+https://github.com/krovacloud/krova-python@v0.1.0"`):
 
 ```python
 from agents import Agent, Runner
@@ -122,3 +130,14 @@ scripts/generate.sh
 ```
 
 The hand-written API is `krova/client.py`, `krova/cubes.py` and `krova/errors.py`.
+
+## Releasing
+
+The SDK is never published on PyPI. Bump `version` in `pyproject.toml`, merge, then push a tag that matches it, for example `v0.1.1`. The `Release` workflow builds the wheel and sdist, checks the tag against `pyproject.toml`, and attaches both to a GitHub Release with a `SHA256SUMS` file.
+
+## Making the repo public
+
+- [ ] No secrets in git history: `gitleaks detect` (or `trufflehog git file://.`) over the full history comes back clean.
+- [ ] A `LICENSE` file is present (MIT, same as krova-node).
+- [ ] The release workflow is tested on a private tag such as `v0.0.1-rc.1`: push it, check the release and its assets, then delete the release and the tag. The tag must match `version` in `pyproject.toml` at that commit, so test from a throwaway branch where it does.
+- [ ] Flip the repository visibility to public.

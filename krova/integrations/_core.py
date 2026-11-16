@@ -91,5 +91,6 @@ class CubeToolbox:
 def missing_extra(package: str, extra: str) -> ImportError:
     """The error a framework module raises when its framework is not installed."""
     return ImportError(
-        f"This adapter needs the {package} package. Install it with: pip install 'krova[{extra}]'"
+        f"This adapter needs the {package} package. Install the {extra} extra from a release tag: "
+        f'pip install "krova[{extra}] @ git+https://github.com/krovacloud/krova-python@vX.Y.Z"'
     )

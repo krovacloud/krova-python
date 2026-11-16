@@ -1,6 +1,6 @@
 """LangChain tools for a Cube: ``krova_tools(shell)`` returns three ``BaseTool`` instances.
 
-Needs ``pip install 'krova[langchain]'``. Written against langchain-core 1.7.6.
+Needs the ``langchain`` extra (see the README). Written against langchain-core 1.7.6.
 """
 
 from __future__ import annotations

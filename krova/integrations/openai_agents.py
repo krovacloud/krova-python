@@ -1,7 +1,7 @@
 """OpenAI Agents SDK tools for a Cube: ``krova_tools(shell)`` returns three ``FunctionTool``s.
 
-Needs ``pip install 'krova[openai-agents]'``. Written against openai-agents 0.24.0. The SDK runs
-tools on its event loop, so each call hands the blocking SSH work to a thread.
+Needs the ``openai-agents`` extra (see the README). Written against openai-agents 0.24.0.
+The SDK runs tools on its event loop, so each call hands the blocking SSH work to a thread.
 """
 
 from __future__ import annotations

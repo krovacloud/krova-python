@@ -1,6 +1,6 @@
 """CrewAI tools for a Cube: ``krova_tools(shell)`` returns three ``BaseTool`` instances.
 
-Needs ``pip install 'krova[crewai]'``. Written against crewai 1.15.39.
+Needs the ``crewai`` extra (see the README). Written against crewai 1.15.39.
 """
 
 from __future__ import annotations
