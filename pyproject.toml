@@ -16,6 +16,11 @@ dependencies = [
     "cryptography>=42",
 ]
 
+[project.optional-dependencies]
+langchain = ["langchain-core>=1.7.6,<2"]
+crewai = ["crewai>=1.15.39,<2"]
+openai-agents = ["openai-agents>=0.24.0,<1"]
+
 [dependency-groups]
 dev = [
     "pytest>=8.0",
@@ -34,3 +39,7 @@ extend-exclude = ["krova/_generated"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+
+[tool.uv]
+# crewai pins openai<3 and openai-agents needs openai>=3, so they cannot share one environment.
+conflicts = [[{ extra = "crewai" }, { extra = "openai-agents" }]]
