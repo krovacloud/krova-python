@@ -25,7 +25,7 @@ from cryptography.hazmat.primitives.asymmetric import ec, ed25519, rsa
 
 from .errors import HostKeyMismatchError, PrivateKeyError, RunTimeoutError
 
-_ENV_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+_ENV_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 _READ_CHUNK = 32768
 
 # Preferred first: paramiko offers the first pinned key's type to the server first.
@@ -83,7 +83,7 @@ def build_command(
     if env:
         assignments: list[str] = []
         for name, value in env.items():
-            if not isinstance(name, str) or not _ENV_NAME.match(name):
+            if not isinstance(name, str) or not _ENV_NAME.fullmatch(name):
                 raise ValueError(f"invalid environment variable name: {name!r}")
             if not isinstance(value, str) or "\x00" in value:
                 raise ValueError(f"the value of {name} must be a string without NUL bytes")
@@ -224,7 +224,7 @@ class CubeShell:
     """An open SSH connection to one Cube: ``run`` commands and use ``files``.
 
     Get one from ``client.cubes.connect(...)`` or ``cube.connect(...)``. Use it as a context
-    manager, or call ``close()``. It holds no copy of your private key.
+    manager, or call ``close()``. It never stores your private key on disk or logs it.
     """
 
     def __init__(self, ssh: paramiko.SSHClient, *, host: str, port: int, user: str) -> None:
@@ -265,7 +265,11 @@ class CubeShell:
             raise ConnectionError("The SSH connection is closed")
         deadline = None if timeout is None else time.monotonic() + timeout
         chan = transport.open_session(timeout=timeout)
-        chan.exec_command(remote)
+        try:
+            chan.exec_command(remote)
+        except BaseException:
+            chan.close()
+            raise
         try:
             # Commands that read stdin see end-of-file instead of waiting for input.
             chan.shutdown_write()

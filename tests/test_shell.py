@@ -77,7 +77,7 @@ def test_string_command_with_prefix_cannot_escape_the_prefix():
     assert out == "cd -- /srv && eval 'false || echo no'"
 
 
-@pytest.mark.parametrize("name", ["", "1A", "A-B", "A B", "A=1", "A;id", "É"])
+@pytest.mark.parametrize("name", ["", "1A", "A-B", "A B", "A=1", "A;id", "É", "A\n"])
 def test_env_names_are_validated(name):
     with pytest.raises(ValueError):
         build_command("true", env={name: "x"})
@@ -325,6 +325,37 @@ def test_a_different_host_key_is_refused(loopback):
     with pytest.raises(HostKeyMismatchError):
         connect(loopback, [host_key_of(impostor)])
     assert loopback.server.server.commands == []
+
+
+def test_a_refused_host_key_leaves_no_open_connection(loopback, monkeypatch):
+    clients: list[paramiko.SSHClient] = []
+    real_connect = paramiko.SSHClient.connect
+
+    def spy(self, *args, **kwargs):
+        clients.append(self)
+        return real_connect(self, *args, **kwargs)
+
+    monkeypatch.setattr(paramiko.SSHClient, "connect", spy)
+    _, impostor = ed25519_pair()
+    with pytest.raises(HostKeyMismatchError):
+        connect(loopback, [host_key_of(impostor)])
+    _, ecdsa = ecdsa_pair()
+    with pytest.raises(HostKeyMismatchError):
+        connect(loopback, [host_key_of(ecdsa)])
+    assert len(clients) == 2
+    assert all(c.get_transport() is None for c in clients)
+
+
+def test_exec_failure_closes_the_channel():
+    channel = FakeChannel()
+
+    def boom(command):
+        raise paramiko.SSHException("exec refused")
+
+    channel.exec_command = boom  # type: ignore[method-assign]
+    with pytest.raises(paramiko.SSHException):
+        fake_shell(channel).run("x")
+    assert channel.closed
 
 
 def test_a_server_key_of_an_unpinned_type_is_refused(loopback):
