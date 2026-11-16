@@ -61,6 +61,35 @@ class WaitTimeoutError(KrovaError):
         self.state = state
 
 
+class HostKeyMismatchError(KrovaError):
+    """The SSH host key check failed, so the SDK did not connect or dropped the connection.
+
+    Raised when the API has no host keys for the Cube yet, when none of the keys given are usable,
+    and when the server presents a key that is not one of them. Connecting is never allowed
+    without this check.
+    """
+
+
+class PrivateKeyError(KrovaError):
+    """The private key could not be read: wrong or missing passphrase, or an unsupported format.
+
+    The message never contains any part of the key.
+    """
+
+
+class RunTimeoutError(KrovaError):
+    """A command passed to ``shell.run`` did not finish within its ``timeout``.
+
+    The command's channel is closed. ``stdout`` and ``stderr`` hold what it printed before then.
+    """
+
+    def __init__(self, message: str, *, timeout: float, stdout: str = "", stderr: str = "") -> None:
+        super().__init__(message)
+        self.timeout = timeout
+        self.stdout = stdout
+        self.stderr = stderr
+
+
 def error_from_response(response: httpx.Response) -> KrovaError:
     """Build a ``KrovaError`` from a non-2xx response.
 

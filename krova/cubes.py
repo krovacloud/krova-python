@@ -1,13 +1,15 @@
-"""Cubes: create, read, list, delete, power off, SSH info, and wait until running.
+"""Cubes: create, read, list, delete, power off, SSH info, connect, and wait until running.
 
-Running commands and moving files (``run()`` and ``files``) are not here yet. They will attach
-to the ``Cube`` handle below as separate modules, so nothing in this file needs to change.
+Running commands and moving files live in ``shell.py``; ``connect`` here opens that connection.
 """
 
 from __future__ import annotations
 
 import time
+from collections.abc import Sequence
 from dataclasses import dataclass
+
+import paramiko
 
 from ._generated.api.cubes import (
     delete_spaces_space_id_cubes_cube_id as _delete_cube,
@@ -46,6 +48,7 @@ from ._generated.models.post_spaces_space_id_cubes_response_201 import (
 from ._generated.types import UNSET
 from ._http import Transport
 from .errors import CubeFailedError, KrovaError, WaitTimeoutError
+from .shell import CubeShell, open_shell
 
 # States a Cube cannot leave without you doing something, so waiting for "running" is pointless.
 _DEAD_STATES = frozenset(
@@ -122,6 +125,23 @@ class Cube:
 
     def ssh(self) -> SshInfo:
         return self._cubes.ssh(self.id)
+
+    def connect(
+        self,
+        *,
+        private_key: str | bytes | paramiko.PKey,
+        passphrase: str | None = None,
+        timeout: float = 30.0,
+        host_keys: Sequence[HostKey | str] | None = None,
+    ) -> CubeShell:
+        """Open an SSH connection to this Cube. See ``Cubes.connect``."""
+        return self._cubes.connect(
+            self.id,
+            private_key=private_key,
+            passphrase=passphrase,
+            timeout=timeout,
+            host_keys=host_keys,
+        )
 
     def power_off(self) -> None:
         self._cubes.power_off(self.id)
@@ -240,3 +260,37 @@ class Cubes:
     def ssh(self, cube_id: str) -> SshInfo:
         response = self._transport.call(_get_ssh, self._space_id, cube_id)
         return SshInfo._from_generated(CubeSshInfo.from_dict(response.json()))
+
+    def connect(
+        self,
+        cube_id: str,
+        *,
+        private_key: str | bytes | paramiko.PKey,
+        passphrase: str | None = None,
+        timeout: float = 30.0,
+        host_keys: Sequence[HostKey | str] | None = None,
+    ) -> CubeShell:
+        """Open an SSH connection to a running Cube and return a ``CubeShell``.
+
+        ``private_key`` is the private half of the key you passed as ``ssh_public_key`` when you
+        created the Cube: an OpenSSH or PEM string (Ed25519, ECDSA or RSA) or a
+        ``paramiko.PKey``. ``passphrase`` unlocks an encrypted key. Your SSH agent and
+        ``~/.ssh`` are never consulted.
+
+        The Cube's host keys come from ``cubes.ssh``. The server must present one of them, or
+        ``HostKeyMismatchError`` is raised; so it is when the API has no keys for the Cube yet.
+        ``host_keys`` replaces the keys from the API with ones you hold, as ``HostKey`` objects or
+        ``"ssh-ed25519 AAAA..."`` lines. There is no way to turn the check off.
+        """
+        info = self.ssh(cube_id)
+        if not info.host:
+            raise KrovaError(f"Cube {cube_id} has no SSH address yet: wait until it is running")
+        return open_shell(
+            host=info.host,
+            port=info.port,
+            user=info.user,
+            host_keys=info.host_keys if host_keys is None else host_keys,
+            private_key=private_key,
+            passphrase=passphrase,
+            timeout=timeout,
+        )

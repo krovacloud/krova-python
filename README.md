@@ -1,6 +1,6 @@
 # krova-python
 
-Python SDK for the Krova Cloud API. Early version: create, get, list and delete Cubes, power one off, read its SSH details, and wait until it is running. Not published to PyPI yet. Running commands and moving files are not part of this version.
+Python SDK for the Krova Cloud API. Early version: create, get, list and delete Cubes, power one off, read its SSH details, wait until it is running, run commands and move files. Not published to PyPI yet.
 
 ## Install
 
@@ -43,9 +43,30 @@ with Krova() as krova:
 
 Other calls: `krova.cubes.get(id)`, `krova.cubes.list()`, `krova.cubes.delete(id)`, `krova.cubes.power_off(id)`, `krova.cubes.ssh(id)`.
 
+## Run commands and move files
+
+Krova has no exec or files API. Commands and files go over the Cube's own SSH, with the private key that matches the `ssh_public_key` you gave the Cube.
+
+```python
+with krova.cubes.connect(cube.id, private_key=open("id_ed25519").read()) as shell:
+    result = shell.run(["git", "status"], cwd="/srv/app", env={"CI": "1"}, timeout=60)
+    print(result.exit_code, result.stdout, result.stderr)
+
+    shell.files.write("/srv/app/.env", "MODE=prod\n")
+    data = shell.files.read("/srv/app/.env")
+    shell.files.upload("build.tar.gz", "/tmp/build.tar.gz")
+    shell.files.download("/var/log/app.log", "app.log")
+```
+
+`cube.connect(...)` does the same. `private_key` is an OpenSSH or PEM string (Ed25519, ECDSA or RSA) or a `paramiko.PKey`; add `passphrase=` for an encrypted key. Your SSH agent and `~/.ssh` are not used.
+
+`run` takes a string, which the remote shell runs as written, or a list, where each item is quoted as one argument. `cwd` and `env` values are quoted for you, and env names must match `[A-Za-z_][A-Za-z0-9_]*`. A non-zero exit code comes back in `RunResult.exit_code` and does not raise; `RunTimeoutError` is raised when `timeout` runs out. File paths go to SFTP as written: no `~` expansion.
+
+The Cube's host keys come from the API and are checked on every connection. If the server presents any other key, or the API has no keys for the Cube yet (a Cube that is still booting), `HostKeyMismatchError` is raised and nothing is sent. You can pass `host_keys=[...]` to use keys you already hold; there is no way to skip the check.
+
 ## Errors
 
-A failed call raises `krova.KrovaError` with `status`, `code`, `message` and `request_id`. Quote the request id when you contact support. Deleting a Cube with termination protection raises it with status 409 and code `termination_protected`. `wait_until_running` raises `WaitTimeoutError` on timeout and `CubeFailedError` if the Cube ends up in `error`, `deleted`, `stopped` or `stopping`; both are `KrovaError` subclasses.
+A failed call raises `krova.KrovaError` with `status`, `code`, `message` and `request_id`. Quote the request id when you contact support. Deleting a Cube with termination protection raises it with status 409 and code `termination_protected`. `wait_until_running` raises `WaitTimeoutError` on timeout and `CubeFailedError` if the Cube ends up in `error`, `deleted`, `stopped` or `stopping`; both are `KrovaError` subclasses, as are `HostKeyMismatchError`, `PrivateKeyError` and `RunTimeoutError`.
 
 ## Development
 
