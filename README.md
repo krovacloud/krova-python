@@ -2,7 +2,7 @@
 
 The Python SDK for [Krova Cloud](https://krova.cloud). Create and manage Cubes, run commands in them and move files, from your own code or from an AI agent.
 
-- Cubes: create, get, list, delete, power off, read SSH details and wait until running.
+- Cubes: create, get, list, rename, resize, set idle auto-stop, delete, power off, read SSH details and wait until running.
 - Run commands and move files over the Cube's own SSH, with host keys checked on every connection.
 - Tools for LangChain, CrewAI and the OpenAI Agents SDK, so an agent gets a Linux machine to work in.
 
@@ -55,7 +55,7 @@ with Krova() as krova:
 
 `Krova(api_key=None, space_id=None, base_url=None)` falls back to `KROVA_API_KEY` and `KROVA_SPACE_ID`. `base_url` is optional: it falls back to `KROVA_BASE_URL`, then to `https://krova.cloud`, and the resolved value is `krova.base_url`.
 
-`image` is an id from the images catalog (`GET /api/v1/images`), for example `ubuntu-24.04` or `ubuntu-24.04-docker`. `create` also takes `region`, `user_data` (a cloud-init script), `termination_protection` and `idempotency_key`.
+`image` is an id from the images catalog (`GET /api/v1/images`), for example `ubuntu-24.04` or `ubuntu-24.04-docker`. `create` also takes `region`, `user_data` (a cloud-init script), `termination_protection`, `idle_timeout_minutes` and `idempotency_key`.
 
 ## Cubes
 
@@ -64,12 +64,17 @@ with Krova() as krova:
 | `krova.cubes.create(...)` | Create a Cube; it starts out `pending`. |
 | `krova.cubes.get(id)` | Get one Cube. |
 | `krova.cubes.list()` | List the Space's Cubes. |
+| `krova.cubes.rename(id, name)` | Rename the Cube and return it. |
+| `krova.cubes.resize(id, vcpu=..., ram_gb=..., disk_gb=...)` | Queue a resize of the sizes you pass. Returns the queued job: `job_id`, `is_live`, `requires_restart`, `previous` and `requested`. |
+| `krova.cubes.set_idle_timeout(id, minutes)` | Set the idle auto-stop timeout (10 to 10080 minutes), or pass `None` to turn it off. |
 | `krova.cubes.ssh(id)` | Read the Cube's SSH host, port, user and host keys. |
 | `krova.cubes.connect(id, private_key=...)` | Open an SSH connection to run commands and move files. |
 | `krova.cubes.power_off(id)` | Power the Cube off. |
 | `krova.cubes.delete(id)` | Delete the Cube. |
 
-A `Cube` has `id`, `name`, `state`, `public_ipv4` and `ssh_user`, and the same actions as methods: `cube.refresh()`, `cube.ssh()`, `cube.connect(...)`, `cube.power_off()`, `cube.delete()` and `cube.wait_until_running(timeout=300)`.
+A `Cube` has `id`, `name`, `state`, `public_ipv4`, `ssh_user`, `idle_timeout_minutes` and `last_active_at`, and the same actions as methods: `cube.refresh()`, `cube.rename(name)`, `cube.resize(...)`, `cube.set_idle_timeout(minutes)`, `cube.ssh()`, `cube.connect(...)`, `cube.power_off()`, `cube.delete()` and `cube.wait_until_running(timeout=300)`.
+
+Idle auto-stop powers a Cube off after the number of idle minutes you set, and keeps its disk. Set it when you create the Cube (`idle_timeout_minutes=30`) or any time after with `set_idle_timeout`. A resize only changes the sizes you pass; the Cube keeps its current size until the queued job finishes, and disk can only grow.
 
 ## Run commands and move files
 

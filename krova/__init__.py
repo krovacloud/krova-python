@@ -1,7 +1,7 @@
 """Python SDK for the Krova Cloud API."""
 
 from .client import Krova
-from .cubes import Cube, Cubes, HostKey, SshInfo
+from .cubes import Cube, Cubes, CubeSize, HostKey, ResizeResult, SshInfo
 from .errors import (
     CubeFailedError,
     HostKeyMismatchError,
@@ -17,12 +17,14 @@ __all__ = [
     "CubeFailedError",
     "CubeFiles",
     "CubeShell",
+    "CubeSize",
     "Cubes",
     "HostKey",
     "HostKeyMismatchError",
     "Krova",
     "KrovaError",
     "PrivateKeyError",
+    "ResizeResult",
     "RunResult",
     "RunTimeoutError",
     "SshInfo",

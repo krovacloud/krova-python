@@ -1,10 +1,11 @@
-"""Cubes: create, read, list, delete, power off, SSH info, connect, and wait until running.
+"""Cubes: create, read, list, rename, resize, idle auto-stop, delete, power off, SSH info, connect.
 
 Running commands and moving files live in ``shell.py``; ``connect`` here opens that connection.
 """
 
 from __future__ import annotations
 
+import datetime
 import time
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -24,10 +25,16 @@ from ._generated.api.cubes import (
     get_spaces_space_id_cubes_cube_id_ssh as _get_ssh,
 )
 from ._generated.api.cubes import (
+    patch_spaces_space_id_cubes_cube_id as _update_cube,
+)
+from ._generated.api.cubes import (
     post_spaces_space_id_cubes as _create_cube,
 )
 from ._generated.api.cubes import (
     post_spaces_space_id_cubes_cube_id_power_off as _power_off,
+)
+from ._generated.api.cubes import (
+    post_spaces_space_id_cubes_cube_id_resize as _resize_cube,
 )
 from ._generated.models.cube import Cube as CubeData
 from ._generated.models.cube_ssh_info import CubeSshInfo
@@ -38,9 +45,24 @@ from ._generated.models.get_spaces_space_id_cubes_cube_id_response_200 import (
 from ._generated.models.get_spaces_space_id_cubes_response_200 import (
     GetSpacesSpaceIdCubesResponse200,
 )
+from ._generated.models.patch_spaces_space_id_cubes_cube_id_body import (
+    PatchSpacesSpaceIdCubesCubeIdBody,
+)
+from ._generated.models.patch_spaces_space_id_cubes_cube_id_response_200 import (
+    PatchSpacesSpaceIdCubesCubeIdResponse200,
+)
 from ._generated.models.post_spaces_space_id_cubes_body import PostSpacesSpaceIdCubesBody
 from ._generated.models.post_spaces_space_id_cubes_body_resources import (
     PostSpacesSpaceIdCubesBodyResources,
+)
+from ._generated.models.post_spaces_space_id_cubes_cube_id_resize_body import (
+    PostSpacesSpaceIdCubesCubeIdResizeBody,
+)
+from ._generated.models.post_spaces_space_id_cubes_cube_id_resize_body_resources import (
+    PostSpacesSpaceIdCubesCubeIdResizeBodyResources,
+)
+from ._generated.models.post_spaces_space_id_cubes_cube_id_resize_response_200 import (
+    PostSpacesSpaceIdCubesCubeIdResizeResponse200,
 )
 from ._generated.models.post_spaces_space_id_cubes_response_201 import (
     PostSpacesSpaceIdCubesResponse201,
@@ -83,6 +105,41 @@ class SshInfo:
         )
 
 
+@dataclass(frozen=True)
+class CubeSize:
+    """A Cube's vCPU count, RAM in GB and disk in GB."""
+
+    vcpu: int
+    ram_gb: float
+    disk_gb: int
+
+
+@dataclass(frozen=True)
+class ResizeResult:
+    """The answer to a resize request. The change itself is applied by a background job.
+
+    The Cube keeps its current size until ``cube.refresh()`` shows the new one. ``is_live`` means
+    the change applies with no restart; ``requires_restart`` is the inverse: the Cube is restarted
+    to apply it.
+    """
+
+    job_id: str
+    is_live: bool
+    requires_restart: bool
+    previous: CubeSize
+    requested: CubeSize
+
+    @classmethod
+    def _from_generated(cls, data: PostSpacesSpaceIdCubesCubeIdResizeResponse200) -> ResizeResult:
+        return cls(
+            job_id=data.job_id,
+            is_live=data.is_live,
+            requires_restart=data.requires_restart,
+            previous=CubeSize(data.previous.vcpu, data.previous.ram_gb, data.previous.disk_gb),
+            requested=CubeSize(data.requested.vcpu, data.requested.ram_gb, data.requested.disk_gb),
+        )
+
+
 class Cube:
     """A Cube and the calls that act on it.
 
@@ -118,6 +175,16 @@ class Cube:
     def ssh_user(self) -> str:
         return self.data.ssh_user
 
+    @property
+    def idle_timeout_minutes(self) -> int | None:
+        """Minutes without activity after which Krova powers the Cube off; ``None`` means off."""
+        return self.data.idle_timeout_minutes
+
+    @property
+    def last_active_at(self) -> datetime.datetime | None:
+        """The last time Krova saw the Cube active; ``None`` until the idle check records one."""
+        return self.data.last_active_at
+
     def refresh(self) -> Cube:
         """Reload this Cube from the API and return it."""
         self.data = self._cubes.get(self.id).data
@@ -142,6 +209,33 @@ class Cube:
             timeout=timeout,
             host_keys=host_keys,
         )
+
+    def rename(self, name: str) -> Cube:
+        """Rename this Cube and return it, updated. See ``Cubes.rename``."""
+        self.data = self._cubes.rename(self.id, name).data
+        return self
+
+    def resize(
+        self,
+        *,
+        vcpu: int | None = None,
+        ram_gb: float | None = None,
+        disk_gb: int | None = None,
+        idempotency_key: str | None = None,
+    ) -> ResizeResult:
+        """Queue a resize of this Cube. See ``Cubes.resize``."""
+        return self._cubes.resize(
+            self.id,
+            vcpu=vcpu,
+            ram_gb=ram_gb,
+            disk_gb=disk_gb,
+            idempotency_key=idempotency_key,
+        )
+
+    def set_idle_timeout(self, minutes: int | None) -> Cube:
+        """Set or clear the idle auto-stop timeout and return this Cube, updated."""
+        self.data = self._cubes.set_idle_timeout(self.id, minutes).data
+        return self
 
     def power_off(self) -> None:
         self._cubes.power_off(self.id)
@@ -205,13 +299,16 @@ class Cubes:
         region: str | None = None,
         user_data: str | None = None,
         termination_protection: bool = False,
+        idle_timeout_minutes: int | None = None,
         idempotency_key: str | None = None,
     ) -> Cube:
         """Create a Cube. It starts out ``pending``; use ``cube.wait_until_running()``.
 
         ``ssh_public_key`` is written to the Cube's login user at boot. ``region`` is a slug from
-        the regions catalog. ``user_data`` is a cloud-init script (16 KB at most). An
-        ``idempotency_key`` makes a retried create return the original Cube.
+        the regions catalog. ``user_data`` is a cloud-init script (16 KB at most).
+        ``idle_timeout_minutes`` powers the Cube off after that many idle minutes (10 to 10080);
+        the disk is kept. Leave it out to keep auto-stop off. An ``idempotency_key`` makes a
+        retried create return the original Cube.
         """
         body = PostSpacesSpaceIdCubesBody(
             name=name,
@@ -223,6 +320,7 @@ class Cubes:
             region=UNSET if region is None else region,
             user_data=UNSET if user_data is None else user_data,
             termination_protection=termination_protection,
+            idle_timeout_minutes=UNSET if idle_timeout_minutes is None else idle_timeout_minutes,
         )
         response = self._transport.call(
             _create_cube,
@@ -248,6 +346,62 @@ class Cubes:
         response = self._transport.call(_list_cubes, self._space_id)
         parsed = GetSpacesSpaceIdCubesResponse200.from_dict(response.json())
         return [Cube(self, c) for c in parsed.cubes]
+
+    def rename(self, cube_id: str, name: str) -> Cube:
+        """Rename a Cube and return it, updated.
+
+        The name is 1 to 64 printable characters and need not be unique in the Space. This is
+        metadata only: the hostname inside a running Cube changes on its next cold restart.
+        """
+        return self._update(cube_id, PatchSpacesSpaceIdCubesCubeIdBody(name=name))
+
+    def set_idle_timeout(self, cube_id: str, minutes: int | None) -> Cube:
+        """Set the idle auto-stop timeout and return the Cube, updated.
+
+        Krova powers the Cube off after ``minutes`` without activity (10 to 10080, the API
+        rejects anything else); the disk is kept. Pass ``None`` to turn auto-stop off.
+        """
+        body = PatchSpacesSpaceIdCubesCubeIdBody(idle_timeout_minutes=minutes)
+        return self._update(cube_id, body)
+
+    def _update(self, cube_id: str, body: PatchSpacesSpaceIdCubesCubeIdBody) -> Cube:
+        response = self._transport.call(_update_cube, self._space_id, cube_id, body=body)
+        parsed = PatchSpacesSpaceIdCubesCubeIdResponse200.from_dict(response.json())
+        return Cube(self, parsed.cube)
+
+    def resize(
+        self,
+        cube_id: str,
+        *,
+        vcpu: int | None = None,
+        ram_gb: float | None = None,
+        disk_gb: int | None = None,
+        idempotency_key: str | None = None,
+    ) -> ResizeResult:
+        """Queue a resize and return what was queued. Send only the sizes you want to change.
+
+        A background job applies it, so the Cube keeps its current size until ``refresh()`` shows
+        the new one. Disk can only grow. The Cube must be ``running`` or ``stopped``. The API
+        answers 400 for an out-of-range size, a size above your plan's limit, a host without
+        room or no change at all, and 409 while a resize is already queued.
+        """
+        body = PostSpacesSpaceIdCubesCubeIdResizeBody(
+            resources=PostSpacesSpaceIdCubesCubeIdResizeBodyResources(
+                vcpu=UNSET if vcpu is None else vcpu,
+                ram_gb=UNSET if ram_gb is None else ram_gb,
+                disk_gb=UNSET if disk_gb is None else disk_gb,
+            )
+        )
+        response = self._transport.call(
+            _resize_cube,
+            self._space_id,
+            cube_id,
+            body=body,
+            idempotency_key=UNSET if idempotency_key is None else idempotency_key,
+        )
+        return ResizeResult._from_generated(
+            PostSpacesSpaceIdCubesCubeIdResizeResponse200.from_dict(response.json())
+        )
 
     def delete(self, cube_id: str) -> None:
         """Queue the Cube for deletion. A Cube with termination protection raises

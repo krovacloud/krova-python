@@ -62,7 +62,8 @@ def sync_detailed(
     """Resolve the space this API key is scoped to
 
      Returns the single space the API key belongs to. Lets a client auto-resolve the space id from the
-    key alone (no spaceId in the URL).
+    key alone (no spaceId in the URL). `apiKey` carries the name and expiry of the key that made the
+    request.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -88,7 +89,8 @@ def sync(
     """Resolve the space this API key is scoped to
 
      Returns the single space the API key belongs to. Lets a client auto-resolve the space id from the
-    key alone (no spaceId in the URL).
+    key alone (no spaceId in the URL). `apiKey` carries the name and expiry of the key that made the
+    request.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -110,7 +112,8 @@ async def asyncio_detailed(
     """Resolve the space this API key is scoped to
 
      Returns the single space the API key belongs to. Lets a client auto-resolve the space id from the
-    key alone (no spaceId in the URL).
+    key alone (no spaceId in the URL). `apiKey` carries the name and expiry of the key that made the
+    request.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
@@ -134,7 +137,8 @@ async def asyncio(
     """Resolve the space this API key is scoped to
 
      Returns the single space the API key belongs to. Lets a client auto-resolve the space id from the
-    key alone (no spaceId in the URL).
+    key alone (no spaceId in the URL). `apiKey` carries the name and expiry of the key that made the
+    request.
 
     Raises:
         errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
