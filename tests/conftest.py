@@ -46,3 +46,9 @@ def timeout_error() -> RunTimeoutError:
     return RunTimeoutError(
         "did not finish", timeout=2.0, stdout="partial out", stderr="partial err"
     )
+
+
+@pytest.fixture(autouse=True)
+def _no_ambient_base_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A KROVA_BASE_URL in the developer's shell must not redirect the mocked requests."""
+    monkeypatch.delenv("KROVA_BASE_URL", raising=False)

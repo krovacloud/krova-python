@@ -296,3 +296,71 @@ def test_base_url_may_already_include_the_api_path():
     assert (
         str(rec.requests[0].url) == "https://staging.example.test/api/v1/spaces/spc_1/cubes/cub_1"
     )
+
+
+def request_url(client_kwargs: dict) -> tuple[Krova, str]:
+    rec = Recorder(json_response(200, {"cube": cube_json()}))
+    client = Krova(
+        api_key="k", space_id="spc_1", transport=httpx.MockTransport(rec), **client_kwargs
+    )
+    client.cubes.get("cub_1")
+    return client, str(rec.requests[0].url)
+
+
+def test_base_url_argument_wins_over_the_environment(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("KROVA_BASE_URL", "https://env.example.test")
+
+    client, url = request_url({"base_url": "https://arg.example.test"})
+
+    assert client.base_url == "https://arg.example.test"
+    assert url == "https://arg.example.test/api/v1/spaces/spc_1/cubes/cub_1"
+
+
+def test_base_url_comes_from_the_environment_when_no_argument(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("KROVA_BASE_URL", "https://env.example.test")
+
+    client, url = request_url({})
+
+    assert client.base_url == "https://env.example.test"
+    assert url == "https://env.example.test/api/v1/spaces/spc_1/cubes/cub_1"
+
+
+@pytest.mark.parametrize("blank", ["", "   "])
+def test_blank_base_url_counts_as_unset(monkeypatch: pytest.MonkeyPatch, blank: str):
+    monkeypatch.setenv("KROVA_BASE_URL", blank)
+
+    client, url = request_url({})
+    assert client.base_url == "https://krova.cloud"
+    assert url == BASE + "/cub_1"
+
+    monkeypatch.setenv("KROVA_BASE_URL", "https://env.example.test")
+    client, _ = request_url({"base_url": blank})
+    assert client.base_url == "https://env.example.test"
+
+
+def test_base_url_defaults_when_neither_argument_nor_environment_is_set():
+    client, url = request_url({})
+
+    assert client.base_url == "https://krova.cloud"
+    assert url == BASE + "/cub_1"
+
+
+@pytest.mark.parametrize(
+    "given",
+    [
+        "https://self.example.test",
+        "https://self.example.test/",
+        "https://self.example.test/api/v1",
+        "https://self.example.test/api/v1/",
+    ],
+)
+def test_origin_and_full_api_url_both_resolve_to_the_api_path(
+    monkeypatch: pytest.MonkeyPatch, given: str
+):
+    _, from_argument = request_url({"base_url": given})
+    monkeypatch.setenv("KROVA_BASE_URL", given)
+    _, from_environment = request_url({})
+
+    expected = "https://self.example.test/api/v1/spaces/spc_1/cubes/cub_1"
+    assert from_argument == expected
+    assert from_environment == expected
