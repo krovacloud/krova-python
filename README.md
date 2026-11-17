@@ -16,7 +16,7 @@ Or install the wheel attached to the release:
 pip install "https://github.com/krovacloud/krova-python/releases/download/v0.1.0/krova-0.1.0-py3-none-any.whl"
 ```
 
-Every release lists the SHA256 of its wheel and sdist in `SHA256SUMS`. The repo is private for now, so both install forms work once it is public.
+Every release lists the SHA256 of its wheel and sdist in `SHA256SUMS`.
 
 ## Quickstart
 
@@ -134,10 +134,3 @@ The hand-written API is `krova/client.py`, `krova/cubes.py` and `krova/errors.py
 ## Releasing
 
 The SDK is never published on PyPI. Bump `version` in `pyproject.toml`, merge, then push a tag that matches it, for example `v0.1.1`. The `Release` workflow builds the wheel and sdist, checks the tag against `pyproject.toml`, and attaches both to a GitHub Release with a `SHA256SUMS` file.
-
-## Making the repo public
-
-- [ ] No secrets in git history: `gitleaks detect` (or `trufflehog git file://.`) over the full history comes back clean.
-- [ ] A `LICENSE` file is present (MIT, same as krova-node).
-- [ ] The release workflow is tested on a private tag such as `v0.0.1-rc.1`: push it, check the release and its assets, then delete the release and the tag. The tag must match `version` in `pyproject.toml` at that commit, so test from a throwaway branch where it does.
-- [ ] Flip the repository visibility to public.
