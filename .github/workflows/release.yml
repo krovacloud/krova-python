@@ -1,6 +1,6 @@
 name: Release
 
-# Releases ship from GitHub only: this repo is never published on PyPI.
+# Releases ship from GitHub.
 # A vX.Y.Z tag builds the wheel and sdist and attaches them, with SHA256SUMS, to a GitHub Release.
 on:
   push:
@@ -62,5 +62,5 @@ jobs:
           gh release create "$TAG" dist/* \
             --verify-tag \
             --title "Krova Python SDK $TAG" \
-            --notes "Install from this release: pip install \"krova @ git+https://github.com/$GH_REPO@$TAG\". Check the files against SHA256SUMS. Never published on PyPI." \
+            --notes "Install from this release: pip install \"krova @ git+https://github.com/$GH_REPO@$TAG\". Check the files against SHA256SUMS." \
             "${flags[@]}"
