@@ -47,7 +47,7 @@ with Krova() as krova:
     cube.delete()
 ```
 
-`Krova(api_key=None, space_id=None, base_url="https://krova.cloud")` falls back to `KROVA_API_KEY` and `KROVA_SPACE_ID`. `image` is an id from the `/images` catalog; `ubuntu-24.04` above is a placeholder.
+`Krova(api_key=None, space_id=None, base_url=None)` falls back to `KROVA_API_KEY` and `KROVA_SPACE_ID`. `base_url` is optional: it falls back to `KROVA_BASE_URL`, then to `https://krova.cloud`, and the resolved value is `krova.base_url`. `image` is an id from the `/images` catalog; `ubuntu-24.04` above is a placeholder.
 
 Other calls: `krova.cubes.get(id)`, `krova.cubes.list()`, `krova.cubes.delete(id)`, `krova.cubes.power_off(id)`, `krova.cubes.ssh(id)`.
 
