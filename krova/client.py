@@ -31,8 +31,9 @@ class Krova:
     ``/api/v1``. ``client.base_url`` holds the value as resolved, before ``/api/v1`` is added.
     ``transport`` replaces the HTTP transport, which is how the tests run without a network.
 
-    Resources hang off the client (``client.cubes``). Command execution and file transfer will
-    be added later as ``client.run`` and ``client.files`` style modules next to ``cubes``.
+    Resources hang off the client (``client.cubes``). Commands and files run through a Cube's
+    SSH connection: ``client.cubes.connect(...)`` returns a ``CubeShell`` with ``run`` and
+    ``files``.
     """
 
     cubes: Cubes
