@@ -191,6 +191,33 @@ from .post_spaces_space_id_cubes_cube_id_domains_body_security_headers_mode impo
 from .post_spaces_space_id_cubes_cube_id_domains_response_201 import (
     PostSpacesSpaceIdCubesCubeIdDomainsResponse201,
 )
+from .post_spaces_space_id_cubes_cube_id_resize_body import (
+    PostSpacesSpaceIdCubesCubeIdResizeBody,
+)
+from .post_spaces_space_id_cubes_cube_id_resize_body_resources import (
+    PostSpacesSpaceIdCubesCubeIdResizeBodyResources,
+)
+from .post_spaces_space_id_cubes_cube_id_resize_response_200 import (
+    PostSpacesSpaceIdCubesCubeIdResizeResponse200,
+)
+from .post_spaces_space_id_cubes_cube_id_resize_response_200_previous import (
+    PostSpacesSpaceIdCubesCubeIdResizeResponse200Previous,
+)
+from .post_spaces_space_id_cubes_cube_id_resize_response_200_requested import (
+    PostSpacesSpaceIdCubesCubeIdResizeResponse200Requested,
+)
+from .post_spaces_space_id_cubes_cube_id_resize_response_200_state import (
+    PostSpacesSpaceIdCubesCubeIdResizeResponse200State,
+)
+from .post_spaces_space_id_cubes_cube_id_resize_response_400 import (
+    PostSpacesSpaceIdCubesCubeIdResizeResponse400,
+)
+from .post_spaces_space_id_cubes_cube_id_resize_response_400_code import (
+    PostSpacesSpaceIdCubesCubeIdResizeResponse400Code,
+)
+from .post_spaces_space_id_cubes_cube_id_resize_response_400_dimension import (
+    PostSpacesSpaceIdCubesCubeIdResizeResponse400Dimension,
+)
 from .post_spaces_space_id_cubes_cube_id_restore_body import (
     PostSpacesSpaceIdCubesCubeIdRestoreBody,
 )
@@ -249,6 +276,7 @@ from .put_spaces_space_id_cubes_cube_id_ssh_port_body import (
 from .region import Region
 from .snapshot import Snapshot
 from .space import Space
+from .space_api_key_type_0 import SpaceApiKeyType0
 from .tcp_mapping import TcpMapping
 from .tcp_mapping_whitelisted_ips_item import TcpMappingWhitelistedIpsItem
 from .webhook import Webhook
@@ -347,6 +375,15 @@ __all__ = (
     "PostSpacesSpaceIdCubesCubeIdDomainsBodyResponseHeaderOverridesType0Set",
     "PostSpacesSpaceIdCubesCubeIdDomainsBodySecurityHeadersMode",
     "PostSpacesSpaceIdCubesCubeIdDomainsResponse201",
+    "PostSpacesSpaceIdCubesCubeIdResizeBody",
+    "PostSpacesSpaceIdCubesCubeIdResizeBodyResources",
+    "PostSpacesSpaceIdCubesCubeIdResizeResponse200",
+    "PostSpacesSpaceIdCubesCubeIdResizeResponse200Previous",
+    "PostSpacesSpaceIdCubesCubeIdResizeResponse200Requested",
+    "PostSpacesSpaceIdCubesCubeIdResizeResponse200State",
+    "PostSpacesSpaceIdCubesCubeIdResizeResponse400",
+    "PostSpacesSpaceIdCubesCubeIdResizeResponse400Code",
+    "PostSpacesSpaceIdCubesCubeIdResizeResponse400Dimension",
     "PostSpacesSpaceIdCubesCubeIdRestoreBody",
     "PostSpacesSpaceIdCubesCubeIdRestoreResponse200",
     "PostSpacesSpaceIdCubesCubeIdSnapshotsBody",
@@ -371,6 +408,7 @@ __all__ = (
     "Region",
     "Snapshot",
     "Space",
+    "SpaceApiKeyType0",
     "TcpMapping",
     "TcpMappingWhitelistedIpsItem",
     "Webhook",

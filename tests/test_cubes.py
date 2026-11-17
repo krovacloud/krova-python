@@ -25,6 +25,8 @@ def cube_json(state: str = "pending", cube_id: str = "cub_1") -> dict:
         "terminationProtection": False,
         "terminationProtectionChangedAt": None,
         "terminationProtectionChangedBy": None,
+        "idleTimeoutMinutes": None,
+        "lastActiveAt": None,
         "createdAt": "2026-11-16T10:00:00.000Z",
         "updatedAt": "2026-11-16T10:00:00.000Z",
     }
@@ -106,6 +108,176 @@ def test_list_returns_every_cube():
     client, _ = make_client(json_response(200, body))
 
     assert [c.id for c in client.cubes.list()] == ["a", "b"]
+
+
+def test_create_sends_idle_timeout_only_when_given():
+    client, rec = make_client(
+        json_response(201, {"cube": cube_json()}),
+        json_response(201, {"cube": {**cube_json(), "idleTimeoutMinutes": 30}}),
+    )
+    args = dict(name="a", image="ubuntu-24.04", vcpu=1, ram_gb=1, disk_gb=10, ssh_public_key="k")
+
+    client.cubes.create(**args)
+    cube = client.cubes.create(**args, idle_timeout_minutes=30)
+
+    assert "idleTimeoutMinutes" not in json.loads(rec.requests[0].content)
+    assert json.loads(rec.requests[1].content)["idleTimeoutMinutes"] == 30
+    assert cube.idle_timeout_minutes == 30
+
+
+def test_cube_exposes_idle_timeout_and_last_active_at():
+    body = {
+        **cube_json("running"),
+        "idleTimeoutMinutes": 45,
+        "lastActiveAt": "2026-11-17T08:30:00.000Z",
+    }
+    client, _ = make_client(json_response(200, {"cube": body}))
+
+    cube = client.cubes.get("cub_1")
+
+    assert cube.idle_timeout_minutes == 45
+    assert cube.last_active_at is not None
+    assert (cube.last_active_at.year, cube.last_active_at.hour, cube.last_active_at.minute) == (
+        2026,
+        8,
+        30,
+    )
+
+
+def test_cube_defaults_to_no_idle_timeout_and_no_activity():
+    client, _ = make_client(json_response(200, {"cube": cube_json("running")}))
+
+    cube = client.cubes.get("cub_1")
+
+    assert cube.idle_timeout_minutes is None
+    assert cube.last_active_at is None
+
+
+def test_rename_patches_only_the_name_and_returns_the_updated_cube():
+    client, rec = make_client(json_response(200, {"cube": {**cube_json(), "name": "renamed"}}))
+
+    cube = client.cubes.rename("cub_1", "renamed")
+
+    request = rec.requests[0]
+    assert (request.method, request.url.path) == ("PATCH", "/api/v1/spaces/spc_1/cubes/cub_1")
+    assert json.loads(request.content) == {"name": "renamed"}
+    assert cube.name == "renamed"
+
+
+def test_cube_handle_rename_updates_the_handle_in_place():
+    client, rec = make_client(
+        json_response(200, {"cube": cube_json()}),
+        json_response(200, {"cube": {**cube_json(), "name": "renamed"}}),
+    )
+    cube = client.cubes.get("cub_1")
+
+    assert cube.rename("renamed") is cube
+
+    assert cube.name == "renamed"
+    assert json.loads(rec.requests[1].content) == {"name": "renamed"}
+
+
+def test_set_idle_timeout_sends_the_minutes():
+    body = {**cube_json("running"), "idleTimeoutMinutes": 60}
+    client, rec = make_client(json_response(200, {"cube": body}))
+
+    cube = client.cubes.set_idle_timeout("cub_1", 60)
+
+    request = rec.requests[0]
+    assert (request.method, request.url.path) == ("PATCH", "/api/v1/spaces/spc_1/cubes/cub_1")
+    assert json.loads(request.content) == {"idleTimeoutMinutes": 60}
+    assert cube.idle_timeout_minutes == 60
+
+
+def test_set_idle_timeout_none_sends_null_to_turn_it_off():
+    client, rec = make_client(json_response(200, {"cube": cube_json("running")}))
+
+    cube = client.cubes.set_idle_timeout("cub_1", None)
+
+    assert json.loads(rec.requests[0].content) == {"idleTimeoutMinutes": None}
+    assert cube.idle_timeout_minutes is None
+
+
+def test_cube_handle_set_idle_timeout_updates_the_handle_in_place():
+    client, _ = make_client(
+        json_response(200, {"cube": cube_json("running")}),
+        json_response(200, {"cube": {**cube_json("running"), "idleTimeoutMinutes": 15}}),
+    )
+    cube = client.cubes.get("cub_1")
+
+    assert cube.set_idle_timeout(15) is cube
+
+    assert cube.idle_timeout_minutes == 15
+
+
+def test_a_rejected_idle_timeout_raises_the_api_error():
+    client, _ = make_client(json_response(400, {"error": "idleTimeoutMinutes must be 10 to 10080"}))
+
+    with pytest.raises(KrovaError) as caught:
+        client.cubes.set_idle_timeout("cub_1", 5)
+
+    assert caught.value.status == 400
+
+
+RESIZE_RESPONSE = {
+    "success": True,
+    "state": "queued",
+    "jobId": "job_7",
+    "isLive": False,
+    "requiresRestart": True,
+    "previous": {"vcpu": 2, "ramGb": 4, "diskGb": 40},
+    "requested": {"vcpu": 4, "ramGb": 4, "diskGb": 80},
+}
+
+
+def test_resize_sends_only_the_given_sizes_and_returns_the_queued_job():
+    client, rec = make_client(json_response(200, RESIZE_RESPONSE))
+
+    result = client.cubes.resize("cub_1", vcpu=4, disk_gb=80, idempotency_key="resize-once")
+
+    request = rec.requests[0]
+    assert (request.method, request.url.path) == (
+        "POST",
+        "/api/v1/spaces/spc_1/cubes/cub_1/resize",
+    )
+    assert request.headers["idempotency-key"] == "resize-once"
+    assert json.loads(request.content) == {"resources": {"vcpu": 4, "diskGb": 80}}
+    assert result.job_id == "job_7"
+    assert (result.is_live, result.requires_restart) == (False, True)
+    assert (result.previous.vcpu, result.previous.ram_gb, result.previous.disk_gb) == (2, 4, 40)
+    assert (result.requested.vcpu, result.requested.ram_gb, result.requested.disk_gb) == (4, 4, 80)
+
+
+def test_resize_sends_ram_in_gb_and_no_idempotency_header_by_default():
+    client, rec = make_client(json_response(200, RESIZE_RESPONSE))
+
+    client.cubes.resize("cub_1", ram_gb=8.5)
+
+    request = rec.requests[0]
+    assert json.loads(request.content) == {"resources": {"ramGb": 8.5}}
+    assert "idempotency-key" not in request.headers
+
+
+def test_cube_handle_resize_uses_the_cube_id():
+    client, rec = make_client(
+        json_response(200, {"cube": cube_json("running")}),
+        json_response(200, RESIZE_RESPONSE),
+    )
+    cube = client.cubes.get("cub_1")
+
+    result = cube.resize(vcpu=4)
+
+    assert rec.requests[1].url.path.endswith("/cubes/cub_1/resize")
+    assert result.job_id == "job_7"
+
+
+def test_resize_conflict_raises_the_api_error():
+    client, _ = make_client(json_response(409, {"error": "A resize is already queued"}))
+
+    with pytest.raises(KrovaError) as caught:
+        client.cubes.resize("cub_1", vcpu=4)
+
+    assert caught.value.status == 409
 
 
 def test_delete_and_power_off_hit_the_right_routes():

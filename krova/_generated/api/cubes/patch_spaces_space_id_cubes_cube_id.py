@@ -89,11 +89,16 @@ def sync_detailed(
     client: AuthenticatedClient | Client,
     body: PatchSpacesSpaceIdCubesCubeIdBody,
 ) -> Response[Error | PatchSpacesSpaceIdCubesCubeIdResponse200]:
-    """Update a Cube (toggle termination protection)
+    """Update a Cube (rename, termination protection, idle auto-stop)
 
-     Idempotent. Termination protection is the only PATCHable field today: sending the value it already
-    has returns the Cube unchanged and writes no audit row. Omitting it is a 400 rather than a no-op, so
-    a typo in the field name cannot look like success. Rename and resize are not part of the public API.
+     Idempotent. The PATCHable fields are `name`, `terminationProtection` and `idleTimeoutMinutes`; send
+    any combination. Sending a value a field already has returns the Cube unchanged and writes no audit
+    row. Sending none of them is a 400 rather than a no-op, so a typo in a field name cannot look like
+    success. Renaming and changing the idle auto-stop timeout need the `cube.manage` permission and
+    changing termination protection needs `cube.termination_protection`; a request with several fields
+    needs every matching permission. Every supplied field is validated before any is applied. Names are
+    not unique within a space. Renaming is metadata only: the hostname inside a running Cube changes on
+    its next cold restart. To change vCPU, RAM or disk use `POST .../resize`.
 
     Args:
         space_id (str):
@@ -128,11 +133,16 @@ def sync(
     client: AuthenticatedClient | Client,
     body: PatchSpacesSpaceIdCubesCubeIdBody,
 ) -> Error | PatchSpacesSpaceIdCubesCubeIdResponse200 | None:
-    """Update a Cube (toggle termination protection)
+    """Update a Cube (rename, termination protection, idle auto-stop)
 
-     Idempotent. Termination protection is the only PATCHable field today: sending the value it already
-    has returns the Cube unchanged and writes no audit row. Omitting it is a 400 rather than a no-op, so
-    a typo in the field name cannot look like success. Rename and resize are not part of the public API.
+     Idempotent. The PATCHable fields are `name`, `terminationProtection` and `idleTimeoutMinutes`; send
+    any combination. Sending a value a field already has returns the Cube unchanged and writes no audit
+    row. Sending none of them is a 400 rather than a no-op, so a typo in a field name cannot look like
+    success. Renaming and changing the idle auto-stop timeout need the `cube.manage` permission and
+    changing termination protection needs `cube.termination_protection`; a request with several fields
+    needs every matching permission. Every supplied field is validated before any is applied. Names are
+    not unique within a space. Renaming is metadata only: the hostname inside a running Cube changes on
+    its next cold restart. To change vCPU, RAM or disk use `POST .../resize`.
 
     Args:
         space_id (str):
@@ -162,11 +172,16 @@ async def asyncio_detailed(
     client: AuthenticatedClient | Client,
     body: PatchSpacesSpaceIdCubesCubeIdBody,
 ) -> Response[Error | PatchSpacesSpaceIdCubesCubeIdResponse200]:
-    """Update a Cube (toggle termination protection)
+    """Update a Cube (rename, termination protection, idle auto-stop)
 
-     Idempotent. Termination protection is the only PATCHable field today: sending the value it already
-    has returns the Cube unchanged and writes no audit row. Omitting it is a 400 rather than a no-op, so
-    a typo in the field name cannot look like success. Rename and resize are not part of the public API.
+     Idempotent. The PATCHable fields are `name`, `terminationProtection` and `idleTimeoutMinutes`; send
+    any combination. Sending a value a field already has returns the Cube unchanged and writes no audit
+    row. Sending none of them is a 400 rather than a no-op, so a typo in a field name cannot look like
+    success. Renaming and changing the idle auto-stop timeout need the `cube.manage` permission and
+    changing termination protection needs `cube.termination_protection`; a request with several fields
+    needs every matching permission. Every supplied field is validated before any is applied. Names are
+    not unique within a space. Renaming is metadata only: the hostname inside a running Cube changes on
+    its next cold restart. To change vCPU, RAM or disk use `POST .../resize`.
 
     Args:
         space_id (str):
@@ -199,11 +214,16 @@ async def asyncio(
     client: AuthenticatedClient | Client,
     body: PatchSpacesSpaceIdCubesCubeIdBody,
 ) -> Error | PatchSpacesSpaceIdCubesCubeIdResponse200 | None:
-    """Update a Cube (toggle termination protection)
+    """Update a Cube (rename, termination protection, idle auto-stop)
 
-     Idempotent. Termination protection is the only PATCHable field today: sending the value it already
-    has returns the Cube unchanged and writes no audit row. Omitting it is a 400 rather than a no-op, so
-    a typo in the field name cannot look like success. Rename and resize are not part of the public API.
+     Idempotent. The PATCHable fields are `name`, `terminationProtection` and `idleTimeoutMinutes`; send
+    any combination. Sending a value a field already has returns the Cube unchanged and writes no audit
+    row. Sending none of them is a 400 rather than a no-op, so a typo in a field name cannot look like
+    success. Renaming and changing the idle auto-stop timeout need the `cube.manage` permission and
+    changing termination protection needs `cube.termination_protection`; a request with several fields
+    needs every matching permission. Every supplied field is validated before any is applied. Names are
+    not unique within a space. Renaming is metadata only: the hostname inside a running Cube changes on
+    its next cold restart. To change vCPU, RAM or disk use `POST .../resize`.
 
     Args:
         space_id (str):

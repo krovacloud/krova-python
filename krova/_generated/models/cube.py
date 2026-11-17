@@ -38,6 +38,12 @@ class Cube:
         termination_protection_changed_by (None | str): Identifies the actor that last toggled the flag: `"user:<id>"`
             for a customer, `"admin:<id>"` for an operator, `"system:<job-name>"` for a worker-driven write. Null when the
             flag has never been turned on.
+        idle_timeout_minutes (int | None): Minutes without activity after which Krova powers the Cube off. Null (the
+            default) turns this off. A Cube counts as idle when no web terminal or SSH session is open and its CPU stays
+            under 5% busy with a 5-minute load average under 0.1. Termination protection does not stop this power-off.
+        last_active_at (datetime.datetime | None): ISO8601 timestamp of the last time Krova saw the Cube active (a web
+            terminal or SSH session open, or CPU at or above 5% busy, or a 5-minute load average at or above 0.1). Null
+            until the idle check has recorded one.
         created_at (datetime.datetime):
         updated_at (datetime.datetime):
         server_domain (None | str | Unset): The hostname of the server currently hosting this Cube (e.g.
@@ -58,6 +64,8 @@ class Cube:
     termination_protection: bool
     termination_protection_changed_at: datetime.datetime | None
     termination_protection_changed_by: None | str
+    idle_timeout_minutes: int | None
+    last_active_at: datetime.datetime | None
     created_at: datetime.datetime
     updated_at: datetime.datetime
     server_domain: None | str | Unset = UNSET
@@ -94,6 +102,15 @@ class Cube:
         termination_protection_changed_by: None | str
         termination_protection_changed_by = self.termination_protection_changed_by
 
+        idle_timeout_minutes: int | None
+        idle_timeout_minutes = self.idle_timeout_minutes
+
+        last_active_at: None | str
+        if isinstance(self.last_active_at, datetime.datetime):
+            last_active_at = self.last_active_at.isoformat()
+        else:
+            last_active_at = self.last_active_at
+
         created_at = self.created_at.isoformat()
 
         updated_at = self.updated_at.isoformat()
@@ -119,6 +136,8 @@ class Cube:
                 "terminationProtection": termination_protection,
                 "terminationProtectionChangedAt": termination_protection_changed_at,
                 "terminationProtectionChangedBy": termination_protection_changed_by,
+                "idleTimeoutMinutes": idle_timeout_minutes,
+                "lastActiveAt": last_active_at,
                 "createdAt": created_at,
                 "updatedAt": updated_at,
             }
@@ -184,6 +203,28 @@ class Cube:
             d.pop("terminationProtectionChangedBy")
         )
 
+        def _parse_idle_timeout_minutes(data: object) -> int | None:
+            if data is None:
+                return data
+            return cast(int | None, data)
+
+        idle_timeout_minutes = _parse_idle_timeout_minutes(d.pop("idleTimeoutMinutes"))
+
+        def _parse_last_active_at(data: object) -> datetime.datetime | None:
+            if data is None:
+                return data
+            try:
+                if not isinstance(data, str):
+                    raise TypeError()
+                last_active_at_type_0 = isoparse(data)
+
+                return last_active_at_type_0
+            except (TypeError, ValueError, AttributeError, KeyError):
+                pass
+            return cast(datetime.datetime | None, data)
+
+        last_active_at = _parse_last_active_at(d.pop("lastActiveAt"))
+
         created_at = isoparse(d.pop("createdAt"))
 
         updated_at = isoparse(d.pop("updatedAt"))
@@ -209,6 +250,8 @@ class Cube:
             termination_protection=termination_protection,
             termination_protection_changed_at=termination_protection_changed_at,
             termination_protection_changed_by=termination_protection_changed_by,
+            idle_timeout_minutes=idle_timeout_minutes,
+            last_active_at=last_active_at,
             created_at=created_at,
             updated_at=updated_at,
             server_domain=server_domain,
